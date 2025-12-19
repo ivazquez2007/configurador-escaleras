@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, ContactShadows, Text, Line, TransformControls, Environment } from '@react-three/drei';
 import * as THREE from 'three';
@@ -360,10 +360,12 @@ const SmartPlatform = ({ position, width, offset, depth }: any) => {
 
   return (
     <group position={position}>
+      {/* Suelo */}
       <mesh position={[centerX, -platformThickness/2, centerZ]} receiveShadow castShadow>
          <boxGeometry args={[platLength, platformThickness, depth]} />
          <meshStandardMaterial color="#555" roughness={0.8} />
       </mesh>
+      {/* Rodapies */}
       <mesh position={[centerX, 0.1, backZ + depth - 0.01]}><boxGeometry args={[platLength, 0.2, 0.02]} /><meshStandardMaterial color="#333" /></mesh>
       <mesh position={[centerX, 0.1, backZ + 0.01]}><boxGeometry args={[platLength, 0.2, 0.02]} /><meshStandardMaterial color="#333" /></mesh>
       <mesh position={[endX - 0.01, 0.1, centerZ]}><boxGeometry args={[0.02, 0.2, depth]} /><meshStandardMaterial color="#333" /></mesh>
@@ -435,14 +437,19 @@ const SafetyCage = ({ height, startHeight, width }: any) => {
 };
 
 const LadderSection = ({ height, startY, startX, config, isTopSection, isBottomSectionInSplit }: any) => {
-  const { pitch, rungSize, widthInner, railWidth, railDepth, exitExtension, hasCage, hasHandrails, wallDistance, supports } = config;
+  const { pitch, rungSize, widthInner, railWidth, railDepth, exitExtension, hasCage, hasHandrails, wallDistance, supports, cageStartHeight } = config;
   const rungs = [];
   let curY = 0.15;
   while(curY < height) { rungs.push(curY); curY += pitch; }
   let railH = height;
   if (isTopSection && config.hasExit) railH += exitExtension;
   else if (isBottomSectionInSplit) railH += 1.1;
-  const cageStart = isTopSection ? 0 : 2.3;
+  
+  // LOGICA CORREGIDA DE INICIO DE JAULA:
+  // Si la escalera empieza en el suelo (startY == 0), usa la altura configurada (ej. 2m).
+  // Si empieza en una plataforma (split), empieza inmediatamente (0).
+  const cageStart = (startY === 0 && cageStartHeight) ? cageStartHeight : 0;
+  
   const showCage = hasCage && (height > cageStart);
 
   return (
@@ -482,7 +489,8 @@ export default function App() {
     wallDistance: 0.200, supports: [1.5, 4.0],
     hasExit: true, exitExtension: 1.150, hasHandrails: false,
     hasLanding: false, landingHeight: 2.5, offset: 0.8, platformDepth: 0.8,
-    hasCage: true, hasTopLanding: true, topLandingDepth: 1.0 
+    hasCage: true, cageStartHeight: 2.0, // NUEVO PARÁMETRO: Altura inicio jaula
+    hasTopLanding: true, topLandingDepth: 1.0 
   });
 
   const addSupport = () => setParams({...params, supports: [...params.supports, 2.0]});
@@ -532,8 +540,8 @@ export default function App() {
       {/* SIDEBAR */}
       <div style={{ width: '420px', background: '#f4f4f4', borderRight: '1px solid #ccc', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         <div style={{ padding: '20px', background: '#333', color: 'white' }}>
-          <h2 style={{ margin: 0 }}>Configurador v16.5</h2>
-          <small>Corrección Cotas + Stage Eliminado</small>
+          <h2 style={{ margin: 0 }}>Configurador v16.6</h2>
+          <small>Corrección Jaula (Inicio Variable)</small>
         </div>
 
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -592,6 +600,15 @@ export default function App() {
              <summary style={{fontWeight:'bold', cursor:'pointer'}}>5. Seguridad</summary>
              <div style={{padding:'10px', background:'#fff', border:'1px solid #ddd', marginTop:'5px'}}>
                 <label style={{display:'block', marginBottom:'5px'}}><input type="checkbox" checked={params.hasCage} onChange={e=>setParams({...params, hasCage:e.target.checked})}/> Jaula de Seguridad</label>
+                
+                {/* --- NUEVO CONTROL DE INICIO DE JAULA --- */}
+                {params.hasCage && (
+                  <div style={{marginLeft:'20px', borderLeft:'2px solid #ccc', paddingLeft:'10px'}}>
+                     <NumberControl label="Inicio Jaula (m)" value={params.cageStartHeight} onChange={(v:number)=>setParams({...params, cageStartHeight:v})} step={0.1} unit="m" />
+                  </div>
+                )}
+                {/* ---------------------------------------- */}
+
                 <hr/>
                 <label style={{display:'block', marginBottom:'5px'}}><input type="checkbox" checked={params.hasExit} onChange={e=>setParams({...params, hasExit:e.target.checked})}/> Salida (+1.15m)</label>
                 {params.hasExit && <NumberControl label="Extension Extra" value={params.exitExtension} onChange={(v:number)=>setParams({...params, exitExtension:v})} step={0.1} unit="m" />}
