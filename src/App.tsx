@@ -478,8 +478,14 @@ const LadderSection = ({ height, startY, startX, config, isTopSection, isBottomS
 export default function App() {
   const [isSnapshot, setIsSnapshot] = useState(false);
   const [showDimensions, setShowDimensions] = useState(false); 
-  const [bgImage, setBgImage] = useState<string | null>(null); // ESTADO PARA LA IMAGEN DE FONDO
+  const [bgImage, setBgImage] = useState<string | null>(null);
   
+  // NUEVO ESTADO PARA EL PRESUPUESTO
+  const [budget, setBudget] = useState({
+    costPerMeter: 198,
+    margin: 30 // %
+  });
+
   const [params, setParams] = useState({
     totalHeight: 5.0, widthInner: 0.588, pitch: 0.300,
     railWidth: 0.024, railDepth: 0.065, rungSize: 0.0295,
@@ -502,7 +508,11 @@ export default function App() {
      setParams({...params, supports: newSup});
   }
 
-  // --- MANEJAR SUBIDA DE FOTO ---
+  // --- CÁLCULOS DEL PRESUPUESTO ---
+  const ladderMeters = params.totalHeight + (params.hasExit ? params.exitExtension : 0);
+  const totalCost = ladderMeters * budget.costPerMeter;
+  const totalPrice = totalCost * (1 + budget.margin / 100);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -549,8 +559,8 @@ export default function App() {
       {/* SIDEBAR */}
       <div style={{ width: '420px', background: '#f4f4f4', borderRight: '1px solid #ccc', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         <div style={{ padding: '20px', background: '#333', color: 'white' }}>
-          <h2 style={{ margin: 0 }}>Configurador v16.7</h2>
-          <small>AR: Foto de Fondo</small>
+          <h2 style={{ margin: 0 }}>Configurador v16.8</h2>
+          <small>Presupuestador Integrado</small>
         </div>
 
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -621,7 +631,6 @@ export default function App() {
              </div>
           </details>
 
-          {/* --- NUEVA SECCIÓN DE REALIDAD AUMENTADA --- */}
           <details>
              <summary style={{fontWeight:'bold', cursor:'pointer', color:'#1976d2'}}>6. Ver en Sitio (AR)</summary>
              <div style={{padding:'10px', background:'#e3f2fd', border:'1px solid #90caf9', marginTop:'5px'}}>
@@ -632,7 +641,31 @@ export default function App() {
                 )}
              </div>
           </details>
-          {/* ------------------------------------------- */}
+
+          {/* --- NUEVA SECCIÓN: PRESUPUESTADOR --- */}
+          <details open>
+             <summary style={{fontWeight:'bold', cursor:'pointer', color:'#2e7d32'}}>7. Presupuesto</summary>
+             <div style={{padding:'15px', background:'#e8f5e9', border:'1px solid #a5d6a7', marginTop:'5px'}}>
+                <NumberControl label="Costo €/m" value={budget.costPerMeter} onChange={(v:number)=>setBudget({...budget, costPerMeter:v})} step={1} unit="€" />
+                <NumberControl label="Margen (%)" value={budget.margin} onChange={(v:number)=>setBudget({...budget, margin:v})} step={1} unit="%" />
+                
+                <hr style={{borderColor:'#c8e6c9', margin:'15px 0'}}/>
+                
+                <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'5px'}}>
+                   <span>Metros Totales:</span>
+                   <strong>{ladderMeters.toFixed(2)} m</strong>
+                </div>
+                <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'5px', color:'#555'}}>
+                   <span>Costo Total:</span>
+                   <span>{totalCost.toFixed(2)} €</span>
+                </div>
+                <div style={{display:'flex', justifyContent:'space-between', fontSize:'1.2rem', marginTop:'10px', color:'#2e7d32', fontWeight:'bold'}}>
+                   <span>PRECIO VENTA:</span>
+                   <span>{totalPrice.toFixed(2)} €</span>
+                </div>
+             </div>
+          </details>
+          {/* ------------------------------------- */}
 
           <div style={{ marginTop:'20px', paddingBottom:'20px' }}>
             <div style={{ display: 'flex', gap: '5px', marginBottom:'5px'}}>
