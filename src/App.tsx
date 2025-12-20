@@ -445,11 +445,7 @@ const LadderSection = ({ height, startY, startX, config, isTopSection, isBottomS
   if (isTopSection && config.hasExit) railH += exitExtension;
   else if (isBottomSectionInSplit) railH += 1.1;
   
-  // LOGICA CORREGIDA DE INICIO DE JAULA:
-  // Si la escalera empieza en el suelo (startY == 0), usa la altura configurada (ej. 2m).
-  // Si empieza en una plataforma (split), empieza inmediatamente (0).
   const cageStart = (startY === 0 && cageStartHeight) ? cageStartHeight : 0;
-  
   const showCage = hasCage && (height > cageStart);
 
   return (
@@ -481,7 +477,8 @@ const LadderSection = ({ height, startY, startX, config, isTopSection, isBottomS
 
 export default function App() {
   const [isSnapshot, setIsSnapshot] = useState(false);
-  const [showDimensions, setShowDimensions] = useState(false); // Estado COTAS
+  const [showDimensions, setShowDimensions] = useState(false); 
+  const [bgImage, setBgImage] = useState<string | null>(null); // ESTADO PARA LA IMAGEN DE FONDO
   
   const [params, setParams] = useState({
     totalHeight: 5.0, widthInner: 0.588, pitch: 0.300,
@@ -489,7 +486,7 @@ export default function App() {
     wallDistance: 0.200, supports: [1.5, 4.0],
     hasExit: true, exitExtension: 1.150, hasHandrails: false,
     hasLanding: false, landingHeight: 2.5, offset: 0.8, platformDepth: 0.8,
-    hasCage: true, cageStartHeight: 2.0, // NUEVO PARÁMETRO: Altura inicio jaula
+    hasCage: true, cageStartHeight: 2.0,
     hasTopLanding: true, topLandingDepth: 1.0 
   });
 
@@ -505,8 +502,20 @@ export default function App() {
      setParams({...params, supports: newSup});
   }
 
+  // --- MANEJAR SUBIDA DE FOTO ---
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        if(ev.target?.result) setBgImage(ev.target.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCapture = () => {
-    setIsSnapshot(true); // Ocultar suelo
+    setIsSnapshot(true);
     setTimeout(() => {
       const canvas = document.querySelector('canvas');
       if (canvas) {
@@ -515,7 +524,7 @@ export default function App() {
         link.href = canvas.toDataURL('image/png');
         link.click();
       }
-      setIsSnapshot(false); // Restaurar suelo
+      setIsSnapshot(false);
     }, 100);
   };
 
@@ -540,8 +549,8 @@ export default function App() {
       {/* SIDEBAR */}
       <div style={{ width: '420px', background: '#f4f4f4', borderRight: '1px solid #ccc', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         <div style={{ padding: '20px', background: '#333', color: 'white' }}>
-          <h2 style={{ margin: 0 }}>Configurador v16.6</h2>
-          <small>Corrección Jaula (Inicio Variable)</small>
+          <h2 style={{ margin: 0 }}>Configurador v16.7</h2>
+          <small>AR: Foto de Fondo</small>
         </div>
 
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -600,21 +609,30 @@ export default function App() {
              <summary style={{fontWeight:'bold', cursor:'pointer'}}>5. Seguridad</summary>
              <div style={{padding:'10px', background:'#fff', border:'1px solid #ddd', marginTop:'5px'}}>
                 <label style={{display:'block', marginBottom:'5px'}}><input type="checkbox" checked={params.hasCage} onChange={e=>setParams({...params, hasCage:e.target.checked})}/> Jaula de Seguridad</label>
-                
-                {/* --- NUEVO CONTROL DE INICIO DE JAULA --- */}
                 {params.hasCage && (
                   <div style={{marginLeft:'20px', borderLeft:'2px solid #ccc', paddingLeft:'10px'}}>
                      <NumberControl label="Inicio Jaula (m)" value={params.cageStartHeight} onChange={(v:number)=>setParams({...params, cageStartHeight:v})} step={0.1} unit="m" />
                   </div>
                 )}
-                {/* ---------------------------------------- */}
-
                 <hr/>
                 <label style={{display:'block', marginBottom:'5px'}}><input type="checkbox" checked={params.hasExit} onChange={e=>setParams({...params, hasExit:e.target.checked})}/> Salida (+1.15m)</label>
                 {params.hasExit && <NumberControl label="Extension Extra" value={params.exitExtension} onChange={(v:number)=>setParams({...params, exitExtension:v})} step={0.1} unit="m" />}
                 <label style={{display:'block'}}><input type="checkbox" checked={params.hasHandrails} onChange={e=>setParams({...params, hasHandrails:e.target.checked})}/> Bastones Salida</label>
              </div>
           </details>
+
+          {/* --- NUEVA SECCIÓN DE REALIDAD AUMENTADA --- */}
+          <details>
+             <summary style={{fontWeight:'bold', cursor:'pointer', color:'#1976d2'}}>6. Ver en Sitio (AR)</summary>
+             <div style={{padding:'10px', background:'#e3f2fd', border:'1px solid #90caf9', marginTop:'5px'}}>
+                <p style={{fontSize:'0.8rem', marginBottom:'10px'}}>Sube una foto de la instalación para ver la escalera superpuesta.</p>
+                <input type="file" accept="image/*" onChange={handleImageUpload} style={{width:'100%', marginBottom:'10px'}} />
+                {bgImage && (
+                  <button onClick={() => setBgImage(null)} style={{width:'100%', padding:'5px', background:'#ff9800', color:'white', border:'none', borderRadius:'4px', cursor:'pointer'}}>quitar Fondo</button>
+                )}
+             </div>
+          </details>
+          {/* ------------------------------------------- */}
 
           <div style={{ marginTop:'20px', paddingBottom:'20px' }}>
             <div style={{ display: 'flex', gap: '5px', marginBottom:'5px'}}>
@@ -632,15 +650,18 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{ flex: 1, background: '#e0e0e0', position: 'relative' }}>
+      <div style={{ 
+          flex: 1, 
+          // APLICAR FONDO SI EXISTE
+          background: bgImage ? `url(${bgImage}) center / cover no-repeat` : '#e0e0e0', 
+          position: 'relative' 
+        }}>
         <Canvas shadows camera={{ position: [5, 5, 8], fov: 50 }} gl={{ preserveDrawingBuffer: true, alpha: true }}>
           
-          {/* LUCES MANUALES + AMBIENTE (REEMPLAZA A STAGE Y CENTER) */}
           <ambientLight intensity={0.7} />
           <directionalLight position={[10, 10, 5]} intensity={1.5} castShadow />
           <Environment preset="city" />
 
-          {/* GRUPO PRINCIPAL MANUALMENTE POSICIONADO EN 0,0,0 */}
           <group position={[0, 0, 0]}>
              <LadderSection 
                 height={bottomH} startY={0} startX={0} config={params}
@@ -659,18 +680,17 @@ export default function App() {
                <TopLanding position={[topStartX, params.totalHeight, 0]} width={params.widthInner} depth={params.topLandingDepth} />
              )}
 
-             {/* LAS COTAS YA NO ROMPEN LA CÁMARA PORQUE NO HAY AUTO-CENTER */}
              {showDimensions && <SceneDimensions params={params} />}
           </group>
           
-          {!isSnapshot && (
+          {/* OCULTAR SUELO SI HAY FOTO DE FONDO O ESTAMOS TOMANDO SNAPSHOT */}
+          {!isSnapshot && !bgImage && (
             <>
               <ContactShadows position={[0, -0.01, 0]} opacity={0.5} scale={10} blur={2.5} far={4} />
               <Grid position={[0, -0.05, 0]} infiniteGrid fadeDistance={25} sectionColor="#999" cellColor="#ccc" />
             </>
           )}
 
-          {/* ORBIT CONTROLS APUNTANDO AL CENTRO DE LA ESCALERA AUTOMÁTICAMENTE */}
           <OrbitControls makeDefault target={[params.offset/2, params.totalHeight/2, 0]} />
         </Canvas>
       </div>
